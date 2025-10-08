@@ -1,0 +1,31 @@
+{
+  "cpu": 0,
+  "environment": [],
+  "environmentFiles": [],
+  "essential": true,
+  "image": "288316012297.dkr.ecr.ap-southeast-2.amazonaws.com/node-rest",
+  "logConfiguration": {
+    "logDriver": "awslogs",
+    "options": {
+      "awslogs-group": "/ecs/nodejs-api-task-definition",
+      "awslogs-create-group": "true",
+      "awslogs-region": "ap-southeast-2",
+      "awslogs-stream-prefix": "ecs"
+    },
+    "secretOptions": []
+  },
+  "mountPoints": [],
+  "name": "nodejs-api",
+  "portMappings": [
+    {
+      "appProtocol": "http",
+      "containerPort": 4000,
+      "hostPort": 4000,
+      "name": "nodejs-app-4000-port",
+      "protocol": "tcp"
+    }
+  ],
+  "systemControls": [],
+  "ulimits": [],
+  "volumesFrom": []
+}
