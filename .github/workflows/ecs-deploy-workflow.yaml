@@ -1,16 +1,25 @@
+# GitHub Actions workflow for CI/CD pipeline
+# This workflow builds a Docker image, pushes it to Amazon ECR, and deploys it to Amazon ECS
 name: CICD
 
+# Trigger: Manual workflow dispatch (can be triggered from GitHub Actions UI)
 on:
   workflow_dispatch:
 
 jobs:
   build-and-deploy:
+    # Run on latest Ubuntu runner provided by GitHub
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the repository code
+      # This pulls the latest code from the repository so we can build it
       - name: Checkout source
         uses: actions/checkout@v3
 
+      # Step 2: Configure AWS credentials
+      # Authenticates with AWS using secrets stored in GitHub repository settings
+      # These credentials are used for all subsequent AWS CLI commands and actions
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -18,12 +27,20 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-southeast-2
 
+      # Step 3: Login to Amazon ECR (Elastic Container Registry)
+      # Authenticates Docker to push/pull images from your private ECR registry
+      # The mask-password option ensures credentials don't appear in logs
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
         with:
           mask-password: 'true'
 
+      # Step 4: Build Docker image and push to ECR
+      # - Builds the Docker image from the Dockerfile in the repository
+      # - Tags it with the ECR registry URL and 'latest' tag
+      # - Pushes the image to ECR
+      # - Outputs the full image URI for use in later steps
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
         env:
@@ -35,29 +52,37 @@ jobs:
           docker push $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG
           echo "image=$ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      # Pull the latest ECS task definition dynamically
+      # Step 5: Retrieve the current ECS task definition
+      # Fetches the existing task definition from ECS and saves it to a JSON file
+      # This ensures we preserve all existing configuration while only updating the image
       - name: Get current ECS task definition
         id: get-task-def
         run: |
           aws ecs describe-task-definition \
-            --task-definition nodejs-app-task-definition \
+            --task-definition nodejs-api \
             --query taskDefinition \
             > task-def.json
 
-      # Replace the container image with the new one
+      # Step 6: Update the task definition with the new Docker image
+      # Takes the existing task definition and replaces only the container image
+      # with the newly built image from ECR
       - name: Render new ECS task definition
         id: render-task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-def.json
-          container-name: nodejs-app
+          container-name: nodejs-api
           image: ${{ steps.build-image.outputs.image }}
 
-      #  Deploy the new task definition
+      # Step 7: Deploy the updated task definition to ECS
+      # - Registers the new task definition revision in ECS
+      # - Updates the ECS service to use the new task definition
+      # - Waits for the service to reach a stable state before completing
+      # - ECS will perform a rolling update, replacing old tasks with new ones
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.render-task-def.outputs.task-definition }}
-          service: nodejs-api-task-definition-service-9syqauod
-          cluster: node-api-cluster
+          service: nodejs-api-service-r2jxtvz1
+          cluster: nodejs-api
           wait-for-service-stability: true
