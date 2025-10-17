@@ -27,7 +27,7 @@ app.get('/secret', (req, res) => {
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
-    message: 'Hello from Node.js on ECS!',
+    message: 'Hello from Node.js on ECS! this the new update',
     app: APP_NAME,
     environment: ENV,
     version: '1.0.0'
