@@ -55,12 +55,13 @@ jobs:
       # Step 5: Retrieve the current ECS task definition
       # Fetches the existing task definition from ECS and saves it to a JSON file
       # This ensures we preserve all existing configuration while only updating the image
+      # We filter out metadata fields that aren't valid for registration
       - name: Get current ECS task definition
         id: get-task-def
         run: |
           aws ecs describe-task-definition \
             --task-definition nodejs-api \
-            --query taskDefinition \
+            --query 'taskDefinition | {family: family, taskRoleArn: taskRoleArn, executionRoleArn: executionRoleArn, networkMode: networkMode, containerDefinitions: containerDefinitions, volumes: volumes, placementConstraints: placementConstraints, requiresCompatibilities: requiresCompatibilities, cpu: cpu, memory: memory, runtimePlatform: runtimePlatform, tags: tags}' \
             > task-def.json
 
       # Step 6: Update the task definition with the new Docker image
